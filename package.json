@@ -1,0 +1,57 @@
+{
+  "name": "@eimerreis/linting",
+  "version": "0.1.0",
+  "description": "Personal OXC linting and formatting defaults",
+  "keywords": [
+    "format",
+    "lint",
+    "nextjs",
+    "oxc",
+    "oxfmt",
+    "oxlint",
+    "react",
+    "tailwind",
+    "typescript"
+  ],
+  "license": "MIT",
+  "bin": {
+    "eimerreis-linting": "./bin/init.mjs"
+  },
+  "files": [
+    "bin",
+    "oxlint.config.json",
+    "oxfmt.config.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "exports": {
+    "./oxlint": "./oxlint.config.json",
+    "./oxfmt": "./oxfmt.config.json",
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "changeset": "changeset",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint --fix .",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "version-packages": "changeset version",
+    "release": "changeset publish"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.29.7",
+    "oxfmt": "^0.41.0",
+    "oxlint": "^1.56.0"
+  },
+  "peerDependencies": {
+    "oxfmt": "^0.41.0",
+    "oxlint": "^1.56.0"
+  },
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  }
+}
