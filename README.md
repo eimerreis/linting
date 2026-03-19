@@ -60,15 +60,36 @@ And updates `package.json` scripts (if present) so linting is executed through t
 
 ```bash
 eimerreis-linting init [targetDir] [--force]
-eimerreis-linting lint [targetDir] [--fix]
-eimerreis-linting format [targetDir] [--check]
+eimerreis-linting lint [targetDir] [--fix] [--ignore-path <path>] [--ignore-pattern <pattern>]
+eimerreis-linting format [targetDir] [--check] [--ignore-path <path>] [--ignore-pattern <pattern>]
 ```
 
 - `init --force`: overwrite existing `.oxlintrc.json` / `.oxfmtrc.json` and script values
 - `lint --fix`: run `oxlint --fix .` and then run react-doctor
 - `format --check`: run `oxfmt --check .`
+- `--ignore-path`: add one ignore file (repeatable) for lint/format
+- `--ignore-pattern`: add one glob pattern (repeatable) for lint/format
 
 `react-doctor` runs only when the target package has `react`, `react-dom`, or `next` in dependencies/devDependencies/peerDependencies.
+
+### Ignoring files
+
+Supported options:
+
+```bash
+eimerreis-linting lint --ignore-path .gitignore
+eimerreis-linting format --check --ignore-path .gitignore --ignore-path .prettierignore
+eimerreis-linting lint --ignore-pattern "dist/**" --ignore-pattern "coverage/**"
+eimerreis-linting format --check --ignore-path .gitignore --ignore-pattern "**/*.generated.ts"
+```
+
+You can also add a dedicated ignore file at project root:
+
+```text
+.eimerreis-lintingignore
+```
+
+If present, it is picked up automatically by both lint and format.
 
 ### First-time one-shot usage
 
@@ -114,7 +135,9 @@ Generated project scripts:
         "lint": "eimerreis-linting lint",
         "lint:fix": "eimerreis-linting lint --fix",
         "format": "eimerreis-linting format",
-        "format:check": "eimerreis-linting format --check"
+        "format:check": "eimerreis-linting format --check",
+        "lint:ignore": "eimerreis-linting lint --ignore-path .eimerreis-lintingignore",
+        "format:check:ignore": "eimerreis-linting format --check --ignore-path .eimerreis-lintingignore"
     }
 }
 ```

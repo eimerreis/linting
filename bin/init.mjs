@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { dirname, resolve } from "node:path";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
@@ -140,8 +141,8 @@ function resolveFormatConfigPath(targetDir) {
 function printUsage() {
     console.log("Usage:");
     console.log("  eimerreis-linting init [targetDir] [--force]");
-    console.log("  eimerreis-linting lint [targetDir] [--fix]");
-    console.log("  eimerreis-linting format [targetDir] [--check]");
+    console.log("  eimerreis-linting lint [targetDir] [--fix] [--ignore-path <path>] [--ignore-pattern <pattern>]");
+    console.log("  eimerreis-linting format [targetDir] [--check] [--ignore-path <path>] [--ignore-pattern <pattern>]");
 }
 
 function parseCommand(rawArgs) {
@@ -182,6 +183,77 @@ function parsePathAndFlags(args, allowedFlags) {
     return {
         targetDir: resolve(process.cwd(), targetDirArg ?? "."),
         flags,
+    };
+}
+
+function parseRunArgs(args, primaryFlag) {
+    let targetDirArg;
+    const ignorePaths = [];
+    const ignorePatterns = [];
+    let primaryEnabled = false;
+
+    for (let index = 0; index < args.length; index += 1) {
+        const arg = args[index];
+
+        if (arg === primaryFlag) {
+            primaryEnabled = true;
+            continue;
+        }
+
+        if (arg === "--ignore-path") {
+            const ignorePath = args[index + 1];
+            if (!ignorePath || ignorePath.startsWith("-")) {
+                throw new Error("Missing value for --ignore-path");
+            }
+            ignorePaths.push(ignorePath);
+            index += 1;
+            continue;
+        }
+
+        if (arg.startsWith("--ignore-path=")) {
+            const ignorePath = arg.slice("--ignore-path=".length);
+            if (!ignorePath) {
+                throw new Error("Missing value for --ignore-path");
+            }
+            ignorePaths.push(ignorePath);
+            continue;
+        }
+
+        if (arg === "--ignore-pattern") {
+            const ignorePattern = args[index + 1];
+            if (!ignorePattern || ignorePattern.startsWith("-")) {
+                throw new Error("Missing value for --ignore-pattern");
+            }
+            ignorePatterns.push(ignorePattern);
+            index += 1;
+            continue;
+        }
+
+        if (arg.startsWith("--ignore-pattern=")) {
+            const ignorePattern = arg.slice("--ignore-pattern=".length);
+            if (!ignorePattern) {
+                throw new Error("Missing value for --ignore-pattern");
+            }
+            ignorePatterns.push(ignorePattern);
+            continue;
+        }
+
+        if (arg.startsWith("-")) {
+            throw new Error(`Unknown flag: ${arg}`);
+        }
+
+        if (targetDirArg) {
+            throw new Error(`Unexpected argument: ${arg}`);
+        }
+
+        targetDirArg = arg;
+    }
+
+    return {
+        targetDir: resolve(process.cwd(), targetDirArg ?? "."),
+        primaryEnabled,
+        ignorePaths,
+        ignorePatterns,
     };
 }
 
@@ -266,6 +338,13 @@ function maybeUpdatePackageJson(targetPackageJsonPath, force) {
     upsertScript(packageJson, "lint:fix", "eimerreis-linting lint --fix", force);
     upsertScript(packageJson, "format", "eimerreis-linting format", force);
     upsertScript(packageJson, "format:check", "eimerreis-linting format --check", force);
+    upsertScript(packageJson, "lint:ignore", "eimerreis-linting lint --ignore-path .eimerreis-lintingignore", force);
+    upsertScript(
+        packageJson,
+        "format:check:ignore",
+        "eimerreis-linting format --check --ignore-path .eimerreis-lintingignore",
+        force
+    );
 
     writeJson(targetPackageJsonPath, packageJson);
     console.log(`update ${targetPackageJsonPath}`);
@@ -278,6 +357,52 @@ function printNextSteps(targetDir) {
     console.log(`1) cd ${relativePath}`);
     console.log("2) npm install");
     console.log("3) npm run lint && npm run format:check");
+}
+
+function resolveIgnorePaths(targetDir, rawIgnorePaths) {
+    const collectedPaths = [];
+    const defaultIgnorePath = resolve(targetDir, ".eimerreis-lintingignore");
+
+    if (existsSync(defaultIgnorePath)) {
+        collectedPaths.push(defaultIgnorePath);
+    }
+
+    for (const rawIgnorePath of rawIgnorePaths) {
+        const resolvedPath = resolve(targetDir, rawIgnorePath);
+        if (!existsSync(resolvedPath)) {
+            throw new Error(`Ignore file not found: ${resolvedPath}`);
+        }
+        collectedPaths.push(resolvedPath);
+    }
+
+    return [...new Set(collectedPaths)];
+}
+
+function createMergedIgnoreFile(ignorePaths, ignorePatterns) {
+    if (ignorePaths.length === 0 && ignorePatterns.length === 0) {
+        return null;
+    }
+
+    const fileEntries = ignorePaths
+        .map((ignorePath) => readFileSync(ignorePath, "utf8").trim())
+        .filter((entry) => entry.length > 0);
+
+    const patternEntries = ignorePatterns.map((pattern) => pattern.trim()).filter((pattern) => pattern.length > 0);
+
+    const mergedEntries = [...fileEntries, ...patternEntries];
+
+    if (mergedEntries.length === 0) {
+        return null;
+    }
+
+    const tempDir = mkdtempSync(join(tmpdir(), "eimerreis-linting-"));
+    const mergedIgnorePath = resolve(tempDir, ".ignore");
+    writeFileSync(mergedIgnorePath, `${mergedEntries.join("\n")}\n`, "utf8");
+
+    return {
+        path: mergedIgnorePath,
+        cleanup: () => rmSync(tempDir, { recursive: true, force: true }),
+    };
 }
 
 async function runInit(args) {
@@ -305,33 +430,43 @@ async function runLint(args) {
         process.exit(1);
     }
 
-    const { targetDir, flags } = parsePathAndFlags(args, ["--fix"]);
+    const { targetDir, primaryEnabled, ignorePaths: rawIgnorePaths, ignorePatterns } = parseRunArgs(args, "--fix");
+    const ignorePaths = resolveIgnorePaths(targetDir, rawIgnorePaths);
+    const mergedIgnoreFile = createMergedIgnoreFile(ignorePaths, ignorePatterns);
     const oxlintBinPath = resolvePackageBin("oxlint", "bin/oxlint");
     const lintArgs = [oxlintBinPath];
     const lintConfigPath = resolveLintConfigPath(targetDir);
 
     lintArgs.push("-c", lintConfigPath);
 
-    if (flags.has("--fix")) {
+    if (mergedIgnoreFile) {
+        lintArgs.push(`--ignore-path=${mergedIgnoreFile.path}`);
+    }
+
+    if (primaryEnabled) {
         lintArgs.push("--fix");
     }
 
     lintArgs.push(".");
 
-    const lintExitCode = await runCommand(process.execPath, lintArgs, targetDir);
-    if (lintExitCode !== 0) {
-        process.exit(lintExitCode);
-    }
+    try {
+        const lintExitCode = await runCommand(process.execPath, lintArgs, targetDir);
+        if (lintExitCode !== 0) {
+            process.exit(lintExitCode);
+        }
 
-    if (!hasReactProject(targetDir)) {
-        console.log("skip react-doctor (no react/next dependency found)");
-        return;
-    }
+        if (!hasReactProject(targetDir)) {
+            console.log("skip react-doctor (no react/next dependency found)");
+            return;
+        }
 
-    const reactDoctorEntryPath = resolvePackageEntry("react-doctor");
-    const doctorExitCode = await runCommand(process.execPath, [reactDoctorEntryPath, "-y", "."], targetDir);
-    if (doctorExitCode !== 0) {
-        process.exit(doctorExitCode);
+        const reactDoctorEntryPath = resolvePackageEntry("react-doctor");
+        const doctorExitCode = await runCommand(process.execPath, [reactDoctorEntryPath, "-y", "."], targetDir);
+        if (doctorExitCode !== 0) {
+            process.exit(doctorExitCode);
+        }
+    } finally {
+        mergedIgnoreFile?.cleanup();
     }
 }
 
@@ -341,22 +476,32 @@ async function runFormat(args) {
         process.exit(1);
     }
 
-    const { targetDir, flags } = parsePathAndFlags(args, ["--check"]);
+    const { targetDir, primaryEnabled, ignorePaths: rawIgnorePaths, ignorePatterns } = parseRunArgs(args, "--check");
+    const ignorePaths = resolveIgnorePaths(targetDir, rawIgnorePaths);
+    const mergedIgnoreFile = createMergedIgnoreFile(ignorePaths, ignorePatterns);
     const oxfmtBinPath = resolvePackageBin("oxfmt", "bin/oxfmt");
     const formatArgs = [oxfmtBinPath];
     const formatConfigPath = resolveFormatConfigPath(targetDir);
 
     formatArgs.push("-c", formatConfigPath);
 
-    if (flags.has("--check")) {
+    if (mergedIgnoreFile) {
+        formatArgs.push(`--ignore-path=${mergedIgnoreFile.path}`);
+    }
+
+    if (primaryEnabled) {
         formatArgs.push("--check");
     }
 
     formatArgs.push(".");
 
-    const formatExitCode = await runCommand(process.execPath, formatArgs, targetDir);
-    if (formatExitCode !== 0) {
-        process.exit(formatExitCode);
+    try {
+        const formatExitCode = await runCommand(process.execPath, formatArgs, targetDir);
+        if (formatExitCode !== 0) {
+            process.exit(formatExitCode);
+        }
+    } finally {
+        mergedIgnoreFile?.cleanup();
     }
 }
 
