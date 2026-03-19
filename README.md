@@ -59,12 +59,13 @@ And updates `package.json` scripts (if present) so linting is executed through t
 ### CLI options
 
 ```bash
-eimerreis-linting init [targetDir] [--force]
+eimerreis-linting init [targetDir] [--force] [--no-editor]
 eimerreis-linting lint [targetDir] [--fix] [--ignore-path <path>] [--ignore-pattern <pattern>]
 eimerreis-linting format [targetDir] [--check] [--ignore-path <path>] [--ignore-pattern <pattern>]
 ```
 
 - `init --force`: overwrite existing `.oxlintrc.json` / `.oxfmtrc.json` and script values
+- `init --no-editor`: skip generating VS Code editor support files
 - `lint --fix`: run `oxlint --fix .` and then run react-doctor
 - `format --check`: run `oxfmt --check .`
 - `--ignore-path`: add one ignore file (repeatable) for lint/format
@@ -104,6 +105,30 @@ Behavior:
 
 - If project config exists (`.oxlintrc.*` / `oxlint.config.*`, `.oxfmtrc.*` / `oxfmt.config.*`), it uses that.
 - If not, it falls back to the package's built-in defaults.
+
+## Editor Support
+
+`init` also creates editor support files for VS Code:
+
+- `.vscode/settings.json`
+- `.vscode/extensions.json`
+
+These enable OXC as formatter/linter, format-on-save, and `source.fixAll.oxc` on save.
+
+If you do not want editor files, use:
+
+```bash
+npx @eimerreis/linting init --no-editor
+```
+
+## CI Usage
+
+For CI you can run directly with `npx` (no scaffold step required):
+
+```bash
+npx @eimerreis/linting lint
+npx @eimerreis/linting format --check
+```
 
 ## Manual Setup
 

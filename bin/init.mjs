@@ -140,9 +140,55 @@ function resolveFormatConfigPath(targetDir) {
 
 function printUsage() {
     console.log("Usage:");
-    console.log("  eimerreis-linting init [targetDir] [--force]");
+    console.log("  eimerreis-linting init [targetDir] [--force] [--no-editor]");
     console.log("  eimerreis-linting lint [targetDir] [--fix] [--ignore-path <path>] [--ignore-pattern <pattern>]");
     console.log("  eimerreis-linting format [targetDir] [--check] [--ignore-path <path>] [--ignore-pattern <pattern>]");
+}
+
+function isPlainObject(value) {
+    return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function mergeJson(target, source, force) {
+    if (!isPlainObject(target) || !isPlainObject(source)) {
+        return force ? source : target;
+    }
+
+    const merged = { ...target };
+
+    for (const [key, sourceValue] of Object.entries(source)) {
+        const targetValue = merged[key];
+
+        if (Array.isArray(sourceValue)) {
+            const targetArray = Array.isArray(targetValue) ? targetValue : [];
+            merged[key] = [...new Set([...targetArray, ...sourceValue])];
+            continue;
+        }
+
+        if (isPlainObject(sourceValue)) {
+            merged[key] = mergeJson(isPlainObject(targetValue) ? targetValue : {}, sourceValue, force);
+            continue;
+        }
+
+        if (force || !(key in merged)) {
+            merged[key] = sourceValue;
+        }
+    }
+
+    return merged;
+}
+
+function upsertJsonFile(filePath, incomingData, force) {
+    if (!existsSync(filePath)) {
+        writeJson(filePath, incomingData);
+        console.log(`write ${filePath}`);
+        return;
+    }
+
+    const currentData = readJson(filePath);
+    const mergedData = mergeJson(currentData, incomingData, force);
+    writeJson(filePath, mergedData);
+    console.log(`update ${filePath}`);
 }
 
 function parseCommand(rawArgs) {
@@ -359,6 +405,47 @@ function printNextSteps(targetDir) {
     console.log("3) npm run lint && npm run format:check");
 }
 
+function ensureEditorSupport(targetDir, force) {
+    const vscodeSettingsPath = resolve(targetDir, ".vscode", "settings.json");
+    const vscodeExtensionsPath = resolve(targetDir, ".vscode", "extensions.json");
+
+    upsertJsonFile(
+        vscodeSettingsPath,
+        {
+            "editor.formatOnSave": true,
+            "editor.formatOnSaveMode": "file",
+            "editor.codeActionsOnSave": {
+                "source.fixAll.oxc": true,
+            },
+            "oxc.enable.oxlint": true,
+            "oxc.enable.oxfmt": true,
+            "oxc.configPath": ".oxlintrc.json",
+            "oxc.fmt.configPath": ".oxfmtrc.json",
+            "[javascript]": {
+                "editor.defaultFormatter": "oxc.oxc-vscode",
+            },
+            "[javascriptreact]": {
+                "editor.defaultFormatter": "oxc.oxc-vscode",
+            },
+            "[typescript]": {
+                "editor.defaultFormatter": "oxc.oxc-vscode",
+            },
+            "[typescriptreact]": {
+                "editor.defaultFormatter": "oxc.oxc-vscode",
+            },
+        },
+        force
+    );
+
+    upsertJsonFile(
+        vscodeExtensionsPath,
+        {
+            recommendations: ["oxc.oxc-vscode"],
+        },
+        force
+    );
+}
+
 function resolveIgnorePaths(targetDir, rawIgnorePaths) {
     const collectedPaths = [];
     const defaultIgnorePath = resolve(targetDir, ".eimerreis-lintingignore");
@@ -406,8 +493,9 @@ function createMergedIgnoreFile(ignorePaths, ignorePatterns) {
 }
 
 async function runInit(args) {
-    const { targetDir, flags } = parsePathAndFlags(args, ["--force"]);
+    const { targetDir, flags } = parsePathAndFlags(args, ["--force", "--no-editor"]);
     const force = flags.has("--force");
+    const noEditor = flags.has("--no-editor");
     const targetPackageJsonPath = resolve(targetDir, "package.json");
     const oxlintPath = resolve(targetDir, ".oxlintrc.json");
     const oxfmtPath = resolve(targetDir, ".oxfmtrc.json");
@@ -420,6 +508,10 @@ async function runInit(args) {
     createExtendsConfig(oxlintPath, "oxlint.config.json", force);
     createExtendsConfig(oxfmtPath, "oxfmt.config.json", force);
     maybeUpdatePackageJson(targetPackageJsonPath, force);
+
+    if (!noEditor) {
+        ensureEditorSupport(targetDir, force);
+    }
 
     printNextSteps(targetDir);
 }
