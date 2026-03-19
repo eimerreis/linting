@@ -14,6 +14,9 @@
     "typescript"
   ],
   "license": "MIT",
+  "repository": {
+    "url": "https://github.com/eimerreis/linting"
+  },
   "bin": {
     "eimerreis-linting": "bin/init.mjs"
   },
@@ -35,10 +38,10 @@
   },
   "scripts": {
     "changeset": "changeset",
-    "lint": "oxlint .",
-    "lint:fix": "oxlint --fix .",
-    "format": "oxfmt .",
-    "format:check": "oxfmt --check .",
+    "lint": "node ./bin/init.mjs lint",
+    "lint:fix": "node ./bin/init.mjs lint --fix",
+    "format": "node ./bin/init.mjs format",
+    "format:check": "node ./bin/init.mjs format --check",
     "version-packages": "changeset version",
     "release": "changeset publish"
   },

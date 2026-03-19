@@ -2,6 +2,8 @@
 
 Personal linting and formatting defaults for new JavaScript/TypeScript projects.
 
+Requires Node `^20.19.0 || >=22.12.0`.
+
 Built on:
 
 - `oxlint` for linting
@@ -18,6 +20,12 @@ Default focus:
 
 ```bash
 npm add -D @eimerreis/linting oxlint oxfmt
+```
+
+`lint` also executes `react-doctor` via:
+
+```bash
+npx react-doctor -y .
 ```
 
 ## Quick Start
@@ -39,7 +47,7 @@ This creates:
 - `.oxlintrc.json`
 - `.oxfmtrc.json`
 
-And updates `package.json` scripts (if present):
+And updates `package.json` scripts (if present) so linting is executed through this package:
 
 - `lint`
 - `lint:fix`
@@ -49,11 +57,16 @@ And updates `package.json` scripts (if present):
 ### CLI options
 
 ```bash
-eimerreis-linting [init] [targetDir] [--force]
+eimerreis-linting init [targetDir] [--force]
+eimerreis-linting lint [targetDir] [--fix]
+eimerreis-linting format [targetDir] [--check]
 ```
 
-- `targetDir`: scaffold config in another directory
-- `--force`: overwrite existing `.oxlintrc.json` / `.oxfmtrc.json` and script values
+- `init --force`: overwrite existing `.oxlintrc.json` / `.oxfmtrc.json` and script values
+- `lint --fix`: run `oxlint --fix .` and then `npx react-doctor -y .`
+- `format --check`: run `oxfmt --check .`
+
+`react-doctor` runs only when the target package has `react`, `react-dom`, or `next` in dependencies/devDependencies/peerDependencies.
 
 ## Manual Setup
 
