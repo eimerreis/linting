@@ -15,7 +15,7 @@
   ],
   "license": "MIT",
   "bin": {
-    "eimerreis-linting": "./bin/init.mjs"
+    "eimerreis-linting": "bin/init.mjs"
   },
   "files": [
     "bin",
