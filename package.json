@@ -1,60 +1,59 @@
 {
-  "name": "@eimerreis/linting",
-  "version": "0.2.0",
-  "description": "Personal OXC linting and formatting defaults",
-  "keywords": [
-    "format",
-    "lint",
-    "nextjs",
-    "oxc",
-    "oxfmt",
-    "oxlint",
-    "react",
-    "tailwind",
-    "typescript"
-  ],
-  "license": "MIT",
-  "repository": {
-    "url": "https://github.com/eimerreis/linting"
-  },
-  "bin": {
-    "eimerreis-linting": "bin/init.mjs"
-  },
-  "files": [
-    "bin",
-    "oxlint.config.json",
-    "oxfmt.config.json",
-    "README.md",
-    "LICENSE"
-  ],
-  "type": "module",
-  "exports": {
-    "./oxlint": "./oxlint.config.json",
-    "./oxfmt": "./oxfmt.config.json",
-    "./package.json": "./package.json"
-  },
-  "publishConfig": {
-    "access": "public"
-  },
-  "scripts": {
-    "changeset": "changeset",
-    "lint": "node ./bin/init.mjs lint",
-    "lint:fix": "node ./bin/init.mjs lint --fix",
-    "format": "node ./bin/init.mjs format",
-    "format:check": "node ./bin/init.mjs format --check",
-    "version-packages": "changeset version",
-    "release": "changeset publish"
-  },
-  "devDependencies": {
-    "@changesets/cli": "^2.29.7",
-    "oxfmt": "^0.41.0",
-    "oxlint": "^1.56.0"
-  },
-  "peerDependencies": {
-    "oxfmt": "^0.41.0",
-    "oxlint": "^1.56.0"
-  },
-  "engines": {
-    "node": "^20.19.0 || >=22.12.0"
-  }
+    "name": "@eimerreis/linting",
+    "version": "0.2.0",
+    "description": "Personal OXC linting and formatting defaults",
+    "keywords": [
+        "format",
+        "lint",
+        "nextjs",
+        "oxc",
+        "oxfmt",
+        "oxlint",
+        "react",
+        "tailwind",
+        "typescript"
+    ],
+    "license": "MIT",
+    "repository": {
+        "url": "https://github.com/eimerreis/linting"
+    },
+    "bin": {
+        "eimerreis-linting": "bin/init.mjs"
+    },
+    "files": [
+        "bin",
+        "oxlint.config.json",
+        "oxfmt.config.json",
+        "README.md",
+        "LICENSE"
+    ],
+    "type": "module",
+    "exports": {
+        "./oxlint": "./oxlint.config.json",
+        "./oxfmt": "./oxfmt.config.json",
+        "./package.json": "./package.json"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "scripts": {
+        "changeset": "changeset",
+        "lint": "node ./bin/init.mjs lint",
+        "lint:fix": "node ./bin/init.mjs lint --fix",
+        "format": "node ./bin/init.mjs format",
+        "format:check": "node ./bin/init.mjs format --check",
+        "version-packages": "changeset version",
+        "release": "changeset publish"
+    },
+    "dependencies": {
+        "oxfmt": "^0.41.0",
+        "oxlint": "^1.56.0",
+        "react-doctor": "^0.0.30"
+    },
+    "devDependencies": {
+        "@changesets/cli": "^2.29.7"
+    },
+    "engines": {
+        "node": "^20.19.0 || >=22.12.0"
+    }
 }
