@@ -189,7 +189,7 @@ npm run changeset
 
 2. Commit `.changeset/*.md` and push to `main`.
 3. Workflow `Release` checks for pending changesets.
-4. If changesets exist, it versions, publishes via npm trusted publishing (OIDC), and commits `chore: version packages`.
+4. If changesets exist, it versions, publishes via npm trusted publishing (OIDC), commits `chore: version packages`, and creates a GitHub Release (`v<version>`) using the matching `CHANGELOG.md` section as release notes.
 
 Trusted publishing setup (one-time on npmjs.com):
 
