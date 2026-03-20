@@ -1,5 +1,11 @@
 # @eimerreis/linting
 
+## 0.5.0
+
+### Minor Changes
+
+- 1ac60dc: add editor integration
+
 ## 0.4.0
 
 ### Minor Changes
